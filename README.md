@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# StrongHabit - Exercise Tracking App 💪
 
-## Getting Started
+StrongHabit is a modern, Progressive Web Application (PWA) designed to help you build and maintain exercise habits. Track your daily exercises, celebrate achievements, and stay motivated on your fitness journey.
 
-First, run the development server:
+## Features ✨
+
+- **Exercise Tracking**: Add and manage your daily exercise routines
+- **Progress Monitoring**: Track reps and completion status for each exercise
+- **Achievement Celebrations**: Get motivated with Rocky Balboa-style celebrations
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **PWA Support**: Install as a native app on your device
+- **Offline Support**: Works without an internet connection
+- **Local Storage**: Your data stays on your device
+
+## Tech Stack 🛠️
+
+- Next.js 15 (App Router)
+- React 19
+- Tailwind CSS
+- Framer Motion
+- Lucide Icons
+- Local Storage for data persistence
+
+## Getting Started 🚀
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/strong-habit-app.git
+   ```
+
+2. Install dependencies:
+   ```bash
+   cd strong-habit-app
+   npm install
+   ```
+
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Build and Deploy 🏗️
+
+To build the application for production:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+To start the production server:
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+```bash
+npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Contributing 🤝
 
-## Learn More
+Contributions are welcome! Feel free to submit issues and pull requests.
 
-To learn more about Next.js, take a look at the following resources:
+## License 📝
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
