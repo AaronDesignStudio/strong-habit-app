@@ -1,17 +1,12 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Share2, BarChart2 } from 'lucide-react';
+import { Home } from 'lucide-react';
 
 export default function CompletionCelebration({ 
   isOpen, 
   onClose, 
-  stats = { 
-    streak: 7, 
-    exercisesDone: 5, 
-    totalExercises: 5, 
-    totalReps: 132 
-  } 
+  stats
 }) {
   if (!isOpen) return null;
 
@@ -105,39 +100,17 @@ export default function CompletionCelebration({
             "It's not about how hard you hit. It's about how hard you can get hit and keep moving forward."
           </motion.p>
 
-          {/* Buttons */}
-          <div className="space-y-3">
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              onClick={onClose}
-              className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors"
-            >
-              <Home className="w-5 h-5" />
-              Go to Home
-            </motion.button>
-
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9 }}
-              className="w-full bg-zinc-800 text-gray-300 py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-zinc-700 transition-colors"
-            >
-              <BarChart2 className="w-5 h-5" />
-              Review Today's Summary
-            </motion.button>
-
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1 }}
-              className="w-full bg-zinc-800 text-gray-300 py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-zinc-700 transition-colors"
-            >
-              <Share2 className="w-5 h-5" />
-              Share Achievement
-            </motion.button>
-          </div>
+          {/* Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            onClick={onClose}
+            className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors"
+          >
+            <Home className="w-5 h-5" />
+            Close
+          </motion.button>
         </motion.div>
       </div>
     </AnimatePresence>

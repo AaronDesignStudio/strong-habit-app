@@ -8,19 +8,36 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import CompletionCelebration from '@/components/CompletionCelebration';
 
-// Local Storage Key
+// Local Storage Keys
 const STORAGE_KEY = 'stronghabit-exercises';
+const LAST_RESET_KEY = 'stronghabit-last-reset';
+const LAST_CELEBRATION_KEY = 'stronghabit-last-celebration';
+const STREAK_KEY = 'stronghabit-streak';
 
 // Initialize localStorage if needed
 const initializeLocalStorage = () => {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
+      // Initialize exercises
       const savedExercises = localStorage.getItem(STORAGE_KEY);
       if (!savedExercises) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-        return [];
       }
-      const parsedExercises = JSON.parse(savedExercises);
+      
+      // Initialize last reset date if not exists
+      const lastReset = localStorage.getItem(LAST_RESET_KEY);
+      if (!lastReset) {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        localStorage.setItem(LAST_RESET_KEY, now.toISOString());
+      }
+
+      // Initialize streak if not exists
+      if (!localStorage.getItem(STREAK_KEY)) {
+        localStorage.setItem(STREAK_KEY, '0');
+      }
+
+      const parsedExercises = savedExercises ? JSON.parse(savedExercises) : [];
       return Array.isArray(parsedExercises) ? parsedExercises : [];
     }
     return [];
@@ -30,22 +47,99 @@ const initializeLocalStorage = () => {
   }
 };
 
+// Check if it's a new day
+const isNewDay = (lastResetDate) => {
+  const now = new Date();
+  const last = new Date(lastResetDate);
+  
+  // Set both dates to start of day for comparison
+  const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const lastStart = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+  
+  return nowStart > lastStart;
+};
+
+// Function to perform the reset
+const performReset = (exercises, nextDayTargets) => {
+  const updatedExercises = exercises.map(exercise => {
+    const wasCompleted = (exercise.currentReps || 0) >= exercise.targetReps;
+    const nextDayTarget = nextDayTargets[exercise.id];
+
+    console.log('Resetting exercise:', {
+      name: exercise.name,
+      wasCompleted,
+      currentTarget: exercise.targetReps,
+      nextDayTarget
+    });
+
+    if (wasCompleted && nextDayTarget) {
+      // If exercise was completed and has a next day target
+      return {
+        ...exercise,
+        currentReps: 0,
+        targetReps: nextDayTarget,
+      };
+    } else if (!wasCompleted) {
+      // If exercise was not completed, reduce target by 1
+      return {
+        ...exercise,
+        currentReps: 0,
+        targetReps: Math.max(1, (exercise.targetReps || 1) - 1),
+      };
+    }
+    // If completed but no next day target set, keep the same target
+    return {
+      ...exercise,
+      currentReps: 0,
+    };
+  });
+
+  return updatedExercises;
+};
+
 export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [exercises, setExercises] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [clickCount, setClickCount] = useState(0);
+  const [showTestButton, setShowTestButton] = useState(false);
+  const [showClock, setShowClock] = useState(false);
+
+  // Add new state for next day targets
+  const [nextDayTargets, setNextDayTargets] = useState({});
+  const [streak, setStreak] = useState(0);
+
+  // Reset only click count after 1 second of no clicks
+  useEffect(() => {
+    if (clickCount > 0) {
+      const timer = setTimeout(() => {
+        setClickCount(0);
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [clickCount]);
+
+  // Check for triple click
+  useEffect(() => {
+    if (clickCount === 3) {
+      setShowTestButton(true);
+    }
+  }, [clickCount]);
+
+  const handleHeaderClick = () => {
+    setClickCount(prev => prev + 1);
+  };
 
   // Initialize on mount
   useEffect(() => {
     const loadExercises = async () => {
       try {
-        // Simulate a small delay to prevent flash of loading state
         await new Promise(resolve => setTimeout(resolve, 700));
-        
-        // Initialize and load exercises
         const initialExercises = initializeLocalStorage();
         setExercises(initialExercises);
+        setStreak(parseInt(localStorage.getItem(STREAK_KEY) || '0'));
       } catch (error) {
         console.error('Error loading exercises:', error);
         setExercises([]);
@@ -75,19 +169,171 @@ export default function DashboardPage() {
     }
   }, [exercises, isLoading]);
 
-  // Check for completion after exercises update
+  // Check for completion and handle celebration
   useEffect(() => {
     if (exercises.length > 0 && !isLoading) {
       const allCompleted = exercises.every(ex => (ex.currentReps || 0) >= ex.targetReps);
+      
+      console.log('Checking completion:', {
+        exercisesCount: exercises.length,
+        allCompleted,
+        exercises: exercises.map(ex => ({
+          name: ex.name,
+          current: ex.currentReps,
+          target: ex.targetReps,
+          isCompleted: (ex.currentReps || 0) >= ex.targetReps
+        }))
+      });
+
       if (allCompleted) {
-        setShowCelebration(true);
+        const lastCelebration = localStorage.getItem(LAST_CELEBRATION_KEY);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        console.log('All exercises completed:', {
+          lastCelebration,
+          shouldShow: !lastCelebration || isNewDay(lastCelebration)
+        });
+        
+        // Only show celebration if not already shown today
+        if (!lastCelebration || isNewDay(lastCelebration)) {
+          // Update streak
+          const newStreak = streak + 1;
+          setStreak(newStreak);
+          localStorage.setItem(STREAK_KEY, String(newStreak));
+          
+          // Save celebration timestamp
+          localStorage.setItem(LAST_CELEBRATION_KEY, new Date().toISOString());
+          
+          // Show celebration
+          setShowCelebration(true);
+          console.log('Showing celebration!');
+        }
       }
     }
-  }, [exercises, isLoading]);
+  }, [exercises, isLoading, streak]);
+
+  // Reset streak if a day was missed
+  useEffect(() => {
+    const lastReset = localStorage.getItem(LAST_RESET_KEY);
+    if (lastReset) {
+      const lastResetDate = new Date(lastReset);
+      const now = new Date();
+      const daysDiff = Math.floor((now - lastResetDate) / (1000 * 60 * 60 * 24));
+      
+      // If more than one day has passed, reset streak
+      if (daysDiff > 1) {
+        setStreak(0);
+        localStorage.setItem(STREAK_KEY, '0');
+      }
+    }
+  }, []);
+
+  // Function to simulate midnight
+  const simulateMidnight = () => {
+    console.log('Simulating midnight reset...');
+    
+    // Clear last celebration before performing reset
+    localStorage.removeItem(LAST_CELEBRATION_KEY);
+    
+    // Perform the reset
+    const updatedExercises = performReset(exercises, nextDayTargets);
+    
+    // Update exercises
+    setExercises(updatedExercises);
+    
+    // Save to localStorage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedExercises));
+    
+    // Clear next day targets
+    setNextDayTargets({});
+    
+    // Update last reset date to next day at midnight
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    localStorage.setItem(LAST_RESET_KEY, tomorrow.toISOString());
+    
+    console.log('Midnight simulation complete!');
+
+    // Force check completion after reset
+    setTimeout(() => {
+      const allCompleted = updatedExercises.every(ex => (ex.currentReps || 0) >= ex.targetReps);
+      console.log('Post-reset completion check:', {
+        exercisesCount: updatedExercises.length,
+        allCompleted,
+        exercises: updatedExercises.map(ex => ({
+          name: ex.name,
+          current: ex.currentReps,
+          target: ex.targetReps,
+          isCompleted: (ex.currentReps || 0) >= ex.targetReps
+        }))
+      });
+    }, 0);
+  };
+
+  // Check for day change and reset exercises
+  useEffect(() => {
+    const checkAndResetExercises = () => {
+      try {
+        if (typeof window === 'undefined' || !window.localStorage) return;
+
+        const lastReset = localStorage.getItem(LAST_RESET_KEY);
+        if (!lastReset) {
+          const now = new Date();
+          now.setHours(0, 0, 0, 0);
+          localStorage.setItem(LAST_RESET_KEY, now.toISOString());
+          return;
+        }
+
+        if (isNewDay(lastReset)) {
+          console.log('New day detected! Resetting exercises...');
+          
+          // Perform the reset
+          const updatedExercises = performReset(exercises, nextDayTargets);
+          
+          // Update exercises
+          setExercises(updatedExercises);
+          
+          // Save to localStorage
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedExercises));
+          
+          // Clear next day targets
+          setNextDayTargets({});
+          
+          // Update last reset date
+          const now = new Date();
+          now.setHours(0, 0, 0, 0);
+          localStorage.setItem(LAST_RESET_KEY, now.toISOString());
+          
+          console.log('Reset complete!');
+        }
+      } catch (error) {
+        console.error('Error checking for day change:', error);
+      }
+    };
+
+    // Run check immediately on mount
+    checkAndResetExercises();
+
+    // Set up interval to check every minute
+    const intervalId = setInterval(checkAndResetExercises, 60000);
+
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId);
+  }, [exercises, nextDayTargets]); // Added exercises to dependencies
+
+  // Function to set next day target for a completed exercise
+  const handleSetNextDayTarget = (exerciseId, target) => {
+    setNextDayTargets(prev => ({
+      ...prev,
+      [exerciseId]: parseInt(target, 10)
+    }));
+  };
 
   // Calculate stats for the celebration modal
   const celebrationStats = {
-    streak: 7, // This will be dynamic in the future
+    streak,
     exercisesDone: exercises.filter(ex => (ex.currentReps || 0) >= ex.targetReps).length,
     totalExercises: exercises.length,
     totalReps: exercises.reduce((total, ex) => total + (ex.currentReps || 0), 0)
@@ -146,16 +392,43 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 bg-zinc-900">
+      <header 
+        className="relative flex items-center justify-between px-4 py-3 bg-zinc-900 cursor-pointer"
+        onClick={handleHeaderClick}
+      >
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
             <Dumbbell className="w-5 h-5" />
           </div>
           <span className="font-semibold text-lg">StrongHabit</span>
         </div>
-        <button className="text-gray-400 hover:text-white transition-colors">
-          <UserCircle2 className="w-8 h-8" />
-        </button>
+        <div className="flex items-center gap-4">
+          <AnimatePresence>
+            {showTestButton && process.env.NODE_ENV === 'development' && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  simulateMidnight();
+                }}
+                className="px-3 py-1 text-sm bg-purple-600 rounded hover:bg-purple-700 transition-colors"
+              >
+                Test Midnight Reset
+              </motion.button>
+            )}
+          </AnimatePresence>
+          <button 
+            className="text-gray-400 hover:text-white transition-colors"
+            onClick={e => e.stopPropagation()}
+          >
+            <UserCircle2 className="w-8 h-8" />
+          </button>
+        </div>
+        <AnimatePresence>
+          {showClock && <Clock />}
+        </AnimatePresence>
       </header>
 
       {isLoading ? (
@@ -231,6 +504,8 @@ export default function DashboardPage() {
                       onDelete={handleDeleteExercise}
                       onUpdateProgress={handleUpdateProgress}
                       isCompleted
+                      onSetNextDayTarget={handleSetNextDayTarget}
+                      nextDayTarget={nextDayTargets[exercise.id]}
                     />
                   ))}
                 </AnimatePresence>
