@@ -6,6 +6,7 @@ import AddExerciseModal from '@/components/AddExerciseModal';
 import ExerciseCard from '@/components/ExerciseCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
+import CompletionCelebration from '@/components/CompletionCelebration';
 
 // Local Storage Key
 const STORAGE_KEY = 'stronghabit-exercises';
@@ -33,6 +34,7 @@ export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [exercises, setExercises] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   // Initialize on mount
   useEffect(() => {
@@ -72,6 +74,24 @@ export default function DashboardPage() {
       saveExercises();
     }
   }, [exercises, isLoading]);
+
+  // Check for completion after exercises update
+  useEffect(() => {
+    if (exercises.length > 0 && !isLoading) {
+      const allCompleted = exercises.every(ex => (ex.currentReps || 0) >= ex.targetReps);
+      if (allCompleted) {
+        setShowCelebration(true);
+      }
+    }
+  }, [exercises, isLoading]);
+
+  // Calculate stats for the celebration modal
+  const celebrationStats = {
+    streak: 7, // This will be dynamic in the future
+    exercisesDone: exercises.filter(ex => (ex.currentReps || 0) >= ex.targetReps).length,
+    totalExercises: exercises.length,
+    totalReps: exercises.reduce((total, ex) => total + (ex.currentReps || 0), 0)
+  };
 
   const handleAddExercise = () => {
     setIsModalOpen(true);
@@ -225,6 +245,13 @@ export default function DashboardPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveExercise}
+      />
+
+      {/* Completion Celebration */}
+      <CompletionCelebration
+        isOpen={showCelebration}
+        onClose={() => setShowCelebration(false)}
+        stats={celebrationStats}
       />
     </div>
   );
