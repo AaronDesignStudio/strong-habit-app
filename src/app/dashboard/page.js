@@ -403,8 +403,8 @@ export default function DashboardPage() {
           <span className="font-semibold text-lg">StrongHabit</span>
         </div>
         <div className="flex items-center gap-4">
-          <AnimatePresence>
-            {showTestButton && process.env.NODE_ENV === 'development' && (
+          <AnimatePresence mode="wait">
+            {showTestButton && (
               <motion.button
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}

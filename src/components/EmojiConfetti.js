@@ -6,25 +6,15 @@ import { useState, useEffect, useCallback } from 'react';
 const generateParticles = (count, size, clickPosition) => {
   const CARD_WIDTH = 400;
   const HALF_CARD = CARD_WIDTH / 2;
-  const BUTTON_WIDTH = 60;  // Approximate button width
-  const BUTTON_HEIGHT = 40; // Approximate button height
   
   return Array.from({ length: count }, (_, i) => {
     const direction = Math.random() > 0.5 ? 1 : -1;
     const spreadX = direction * (Math.random() * HALF_CARD + HALF_CARD * 0.3);
     
-    // Randomize starting position within button area
-    const randomX = (Math.random() - 0.5) * BUTTON_WIDTH;
-    const randomY = (Math.random() - 0.5) * BUTTON_HEIGHT;
-    
-    // Calculate final starting position
-    const startX = (clickPosition?.x || 0) + randomX;
-    const startY = (clickPosition?.y || 0) + randomY;
-    
     return {
       id: `${Date.now()}-${i}-${Math.random()}`,
-      x: startX,
-      y: startY,
+      x: clickPosition?.x || 0,
+      y: clickPosition?.y || 0,
       size,
       spreadX,
       maxRise: -100 - Math.abs(spreadX * 0.2),
@@ -43,32 +33,28 @@ export default function EmojiConfetti({
 }) {
   const [particleSets, setParticleSets] = useState([]);
   
-  // Cleanup function to remove completed particle sets
   const cleanupCompletedSets = useCallback(() => {
     const now = Date.now();
     setParticleSets(prevSets => 
       prevSets.filter(set => {
-        // Keep sets that haven't completed their full animation (2.5s + max delay)
         const setAge = now - set[0].createdAt;
-        return setAge < 2800; // 2.5s animation + 0.3s max delay
+        return setAge < 2800;
       })
     );
   }, []);
 
   useEffect(() => {
     if (trigger) {
-      // Add new particle set
       const newParticles = generateParticles(count, size, clickPosition);
       setParticleSets(prev => [...prev, newParticles]);
       
-      // Schedule cleanup
       const timer = setTimeout(cleanupCompletedSets, 2800);
       return () => clearTimeout(timer);
     }
   }, [trigger, count, size, clickPosition, cleanupCompletedSets]);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+    <div className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 40 }}>
       <AnimatePresence>
         {particleSets.flatMap(particleSet =>
           particleSet.map(particle => (
@@ -112,7 +98,10 @@ export default function EmojiConfetti({
                 position: 'absolute',
                 left: 0,
                 top: 0,
-                fontSize: particle.size
+                fontSize: particle.size,
+                pointerEvents: 'none',
+                willChange: 'transform',
+                zIndex: 40
               }}
             >
               💪🏼
