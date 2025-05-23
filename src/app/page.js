@@ -1,101 +1,127 @@
+'use client';
+
 import Image from "next/image";
+import { useState } from 'react';
+import { Smartphone } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-export default function Home() {
+// Local Storage Key - keep it consistent with dashboard
+const STORAGE_KEY = 'stronghabit-exercises';
+
+export default function WelcomePage() {
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    // Google login implementation will be added later
+  };
+
+  const handleFacebookLogin = async () => {
+    setIsLoading(true);
+    // Facebook login implementation will be added later
+  };
+
+  const handleLocalLogin = () => {
+    try {
+      // Check if localStorage is available
+      if (typeof window !== 'undefined' && window.localStorage) {
+        // Initialize exercises array if it doesn't exist
+        if (!localStorage.getItem(STORAGE_KEY)) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing local storage:', error);
+    }
+    
+    // Redirect to dashboard
+    router.push('/dashboard');
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <main className="min-h-screen bg-black text-white flex flex-col items-center px-4 py-12">
+      {/* App Logo */}
+      <div className="w-24 h-24 bg-purple-600 rounded-2xl mb-4 flex items-center justify-center">
+        <div className="w-12 h-12 text-white">💪</div>
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+      {/* App Name */}
+      <h1 className="text-3xl font-bold mb-2">StrongHabit</h1>
+      
+      {/* Tagline */}
+      <p className="text-gray-400 mb-8">Build strength one rep at a time</p>
+
+      {/* Welcome Message */}
+      <h2 className="text-2xl font-semibold mb-2">Welcome to your strength journey</h2>
+      <p className="text-gray-400 mb-8">Track your reps, your way.</p>
+
+      {/* Login Options */}
+      <div className="w-full max-w-sm space-y-4">
+        <button
+          onClick={handleGoogleLogin}
+          disabled={isLoading}
+          className="w-full bg-white text-black py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <path
+              fill="currentColor"
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <path
+              fill="#34A853"
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+            />
+          </svg>
+          Login with Google
+        </button>
+
+        <button
+          onClick={handleFacebookLogin}
+          disabled={isLoading}
+          className="w-full bg-[#1877F2] text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-[#1865F2] transition-colors"
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+          </svg>
+          Login with Facebook
+        </button>
+
+        <div className="flex items-center gap-4 my-6">
+          <div className="h-px bg-gray-800 flex-1" />
+          <span className="text-gray-500">or</span>
+          <div className="h-px bg-gray-800 flex-1" />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+
+        <button
+          onClick={handleLocalLogin}
+          className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <Smartphone className="w-5 h-5" />
+          Continue Locally
+        </button>
+      </div>
+
+      {/* Terms and Privacy */}
+      <p className="text-gray-500 text-sm mt-8 text-center">
+        By continuing, you agree to our{' '}
+        <a href="/terms" className="text-purple-500 hover:underline">Terms of Service</a>
+        {' '}and{' '}
+        <a href="/privacy" className="text-purple-500 hover:underline">Privacy Policy</a>.
+      </p>
+
+      {/* Local Storage Notice */}
+      <p className="text-gray-600 text-sm mt-4 text-center">
+        Data saved only on this device, no sync across devices.
+      </p>
+    </main>
   );
 }
