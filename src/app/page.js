@@ -1,7 +1,7 @@
 'use client';
 
 import Image from "next/image";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Smartphone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -11,6 +11,17 @@ const STORAGE_KEY = 'stronghabit-exercises';
 export default function WelcomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Check if user is already logged in
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isLoggedIn = localStorage.getItem('stronghabit-logged-in');
+      if (isLoggedIn === 'true') {
+        // User is already logged in, redirect to dashboard
+        router.push('/dashboard');
+      }
+    }
+  }, [router]);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -30,6 +41,11 @@ export default function WelcomePage() {
         if (!localStorage.getItem(STORAGE_KEY)) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
         }
+        
+        // Set login state to persist across sessions
+        localStorage.setItem('stronghabit-logged-in', 'true');
+        localStorage.setItem('stronghabit-login-method', 'local');
+        localStorage.setItem('stronghabit-login-time', new Date().toISOString());
       }
     } catch (error) {
       console.error('Error initializing local storage:', error);

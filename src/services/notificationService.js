@@ -26,6 +26,12 @@ class NotificationService {
       // Check current permission status
       this.permissionStatus = typeof window !== 'undefined' ? Notification.permission : 'default';
       
+      // If permission is granted, automatically start smart reminders
+      if (this.permissionStatus === 'granted') {
+        console.log('Notification permission already granted, starting smart reminders');
+        this.scheduleSmartReminders(9, 21);
+      }
+      
       return true;
     } catch (error) {
       console.error('Service Worker registration failed:', error);

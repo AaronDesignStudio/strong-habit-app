@@ -8,6 +8,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import CompletionCelebration from '@/components/CompletionCelebration';
 import NotificationPermission from '@/components/NotificationPermission';
+import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 
 // Local Storage Keys
 const STORAGE_KEY = 'stronghabit-exercises';
@@ -107,6 +108,7 @@ export default function DashboardPage() {
   const [showTestButton, setShowTestButton] = useState(false);
   const [showClock, setShowClock] = useState(false);
   const [showNotificationPermission, setShowNotificationPermission] = useState(false);
+  const [showPWAInstall, setShowPWAInstall] = useState(false);
 
   // Add new state for next day targets
   const [nextDayTargets, setNextDayTargets] = useState({});
@@ -156,10 +158,11 @@ export default function DashboardPage() {
               const hasAskedForPermission = localStorage.getItem('stronghabit-notification-asked');
               const permissionStatus = notificationService.getPermissionStatus();
               
-              // Start smart reminders if permission is granted
-              if (permissionStatus === 'granted') {
-                notificationService.scheduleSmartReminders(9, 21); // 9 AM to 9 PM
-              }
+              console.log('Notification status check:', {
+                hasAskedForPermission,
+                permissionStatus,
+                exerciseCount: initialExercises.length
+              });
               
               // Show permission modal if:
               // 1. User hasn't been asked before
@@ -169,6 +172,17 @@ export default function DashboardPage() {
                 setTimeout(() => {
                   setShowNotificationPermission(true);
                 }, 2000); // Show after 2 seconds
+              }
+              
+              // Show PWA install prompt if not in standalone mode and has exercises
+              const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                 window.navigator.standalone === true;
+              const hasShownPWAPrompt = localStorage.getItem('stronghabit-pwa-prompt-shown');
+              
+              if (!isStandalone && !hasShownPWAPrompt && initialExercises.length > 0) {
+                setTimeout(() => {
+                  setShowPWAInstall(true);
+                }, 5000); // Show after 5 seconds
               }
             } catch (error) {
               console.error('Error initializing notification service:', error);
@@ -457,6 +471,12 @@ export default function DashboardPage() {
     setShowNotificationPermission(false);
   };
 
+  // Handle PWA install prompt close
+  const handlePWAInstallClose = () => {
+    localStorage.setItem('stronghabit-pwa-prompt-shown', 'true');
+    setShowPWAInstall(false);
+  };
+
   // Test notification function
   const handleTestNotification = async () => {
     try {
@@ -664,6 +684,12 @@ export default function DashboardPage() {
         isOpen={showNotificationPermission}
         onClose={handleNotificationPermissionClose}
         onPermissionGranted={handleNotificationPermissionGranted}
+      />
+
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt
+        isOpen={showPWAInstall}
+        onClose={handlePWAInstallClose}
       />
     </div>
   );
