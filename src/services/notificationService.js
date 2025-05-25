@@ -5,6 +5,7 @@ class NotificationService {
     this.permissionStatus = 'default';
     this.isSupported = typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator;
     this.reminderIntervalId = null;
+    this.periodicCheckId = null;
   }
 
   // Initialize the notification service
@@ -29,10 +30,19 @@ class NotificationService {
       // Check current permission status
       this.permissionStatus = typeof window !== 'undefined' ? Notification.permission : 'default';
       
+      console.log('Notification service initialized:', {
+        isSupported: this.isSupported,
+        permissionStatus: this.permissionStatus,
+        hasServiceWorker: !!this.swRegistration
+      });
+      
       // If permission is granted, automatically start smart reminders
       if (this.permissionStatus === 'granted') {
-        console.log('Notification permission already granted, starting smart reminders');
-        this.scheduleSmartReminders(9, 21);
+        console.log('Notification permission already granted, starting smart reminders automatically');
+        // Use a small delay to ensure service worker is fully ready
+        setTimeout(() => {
+          this.scheduleSmartReminders(9, 21);
+        }, 1000);
       }
       
       return true;
@@ -40,6 +50,21 @@ class NotificationService {
       console.error('Service Worker registration failed:', error);
       // Still return true if notifications are supported, just without service worker
       this.permissionStatus = typeof window !== 'undefined' ? Notification.permission : 'default';
+      
+      console.log('Notification service initialized (without service worker):', {
+        isSupported: this.isSupported,
+        permissionStatus: this.permissionStatus,
+        hasServiceWorker: false
+      });
+      
+      // Even without service worker, start client-side reminders if permission is granted
+      if (this.permissionStatus === 'granted') {
+        console.log('Permission granted, starting client-side reminders as fallback');
+        setTimeout(() => {
+          this.scheduleSmartReminders(9, 21);
+        }, 1000);
+      }
+      
       return this.isSupported;
     }
   }
@@ -139,6 +164,60 @@ class NotificationService {
   // Get permission status
   getPermissionStatus() {
     return this.permissionStatus;
+  }
+
+  // Check and restore notification state (call this when app loads)
+  async checkAndRestoreNotificationState() {
+    if (typeof window === 'undefined') return false;
+    
+    // Update permission status from browser
+    this.permissionStatus = Notification.permission;
+    
+    console.log('Checking and restoring notification state:', {
+      permissionStatus: this.permissionStatus,
+      isSupported: this.isSupported,
+      isEnabled: this.isEnabled()
+    });
+    
+    // If permission is granted, ensure reminders are running
+    if (this.permissionStatus === 'granted') {
+      console.log('Permission is granted, ensuring smart reminders are active');
+      
+      // Ensure service worker is ready first
+      await this.ensureServiceWorkerReady();
+      
+      // Start smart reminders
+      this.scheduleSmartReminders(9, 21);
+      
+      // Set up periodic check to ensure notifications stay active (every 60 seconds)
+      this.startPeriodicStateCheck();
+      
+      return true;
+    }
+    
+    return false;
+  }
+
+  // Start periodic check to ensure notification state stays active
+  startPeriodicStateCheck() {
+    if (this.periodicCheckId) {
+      clearInterval(this.periodicCheckId);
+    }
+    
+    this.periodicCheckId = setInterval(() => {
+      if (typeof window !== 'undefined' && Notification.permission === 'granted') {
+        console.log('Periodic check: Ensuring notifications are still active');
+        this.scheduleSmartReminders(9, 21);
+      }
+    }, 60 * 1000); // Check every 60 seconds
+  }
+
+  // Stop periodic check
+  stopPeriodicStateCheck() {
+    if (this.periodicCheckId) {
+      clearInterval(this.periodicCheckId);
+      this.periodicCheckId = null;
+    }
   }
 
   // Show immediate notification

@@ -154,6 +154,9 @@ export default function DashboardPage() {
             try {
               await notificationService.init();
               
+              // Always check and restore notification state after initialization
+              await notificationService.checkAndRestoreNotificationState();
+              
               // Check if we should show notification permission modal
               const hasAskedForPermission = localStorage.getItem('stronghabit-notification-asked');
               const permissionStatus = notificationService.getPermissionStatus();
@@ -166,8 +169,9 @@ export default function DashboardPage() {
               
               // Handle notification permission logic
               if (permissionStatus === 'granted') {
-                console.log('Permission already granted, ensuring smart reminders are active');
-                notificationService.scheduleSmartReminders(9, 21);
+                console.log('Permission already granted, restoring notification state');
+                // Use the new restoration method to ensure everything is properly set up
+                await notificationService.checkAndRestoreNotificationState();
               } else if (!hasAskedForPermission && initialExercises.length > 0) {
                 // Show permission modal if:
                 // 1. User hasn't been asked before
@@ -468,13 +472,13 @@ export default function DashboardPage() {
     localStorage.setItem('stronghabit-notification-asked', 'true');
     setShowNotificationPermission(false);
     
-    // Start smart reminders immediately after permission is granted
+    // Restore notification state immediately after permission is granted
     try {
       const { default: notificationService } = await import('@/services/notificationService');
-      notificationService.scheduleSmartReminders(9, 21);
-      console.log('Smart reminders started after permission granted');
+      await notificationService.checkAndRestoreNotificationState();
+      console.log('Notification state restored after permission granted');
     } catch (error) {
-      console.error('Error starting smart reminders after permission granted:', error);
+      console.error('Error restoring notification state after permission granted:', error);
     }
   };
 
