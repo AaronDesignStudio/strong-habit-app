@@ -138,39 +138,50 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadExercises = async () => {
       try {
+        console.log('Starting to load exercises...');
         await new Promise(resolve => setTimeout(resolve, 700));
         const initialExercises = initializeLocalStorage();
+        console.log('Loaded exercises:', initialExercises);
         setExercises(initialExercises);
         setStreak(parseInt(localStorage.getItem(STREAK_KEY) || '0'));
         
-        // Initialize notification service (client-side only)
+        // Initialize notification service (client-side only, non-blocking)
         if (typeof window !== 'undefined') {
-          const { default: notificationService } = await import('@/services/notificationService');
-          await notificationService.init();
-          
-          // Check if we should show notification permission modal
-          const hasAskedForPermission = localStorage.getItem('stronghabit-notification-asked');
-          const permissionStatus = notificationService.getPermissionStatus();
-          
-          // Start smart reminders if permission is granted
-          if (permissionStatus === 'granted') {
-            notificationService.scheduleSmartReminders(9, 21); // 9 AM to 9 PM
-          }
-          
-          // Show permission modal if:
-          // 1. User hasn't been asked before
-          // 2. Permission is not granted
-          // 3. User has exercises (not first time)
-          if (!hasAskedForPermission && permissionStatus !== 'granted' && initialExercises.length > 0) {
-            setTimeout(() => {
-              setShowNotificationPermission(true);
-            }, 2000); // Show after 2 seconds
-          }
+          // Don't await this - let it run in background
+          import('@/services/notificationService').then(async ({ default: notificationService }) => {
+            try {
+              await notificationService.init();
+              
+              // Check if we should show notification permission modal
+              const hasAskedForPermission = localStorage.getItem('stronghabit-notification-asked');
+              const permissionStatus = notificationService.getPermissionStatus();
+              
+              // Start smart reminders if permission is granted
+              if (permissionStatus === 'granted') {
+                notificationService.scheduleSmartReminders(9, 21); // 9 AM to 9 PM
+              }
+              
+              // Show permission modal if:
+              // 1. User hasn't been asked before
+              // 2. Permission is not granted
+              // 3. User has exercises (not first time)
+              if (!hasAskedForPermission && permissionStatus !== 'granted' && initialExercises.length > 0) {
+                setTimeout(() => {
+                  setShowNotificationPermission(true);
+                }, 2000); // Show after 2 seconds
+              }
+            } catch (error) {
+              console.error('Error initializing notification service:', error);
+            }
+          }).catch(error => {
+            console.error('Error loading notification service:', error);
+          });
         }
       } catch (error) {
         console.error('Error loading exercises:', error);
         setExercises([]);
       } finally {
+        console.log('Setting loading to false');
         setIsLoading(false);
       }
     };
