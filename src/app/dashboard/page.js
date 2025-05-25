@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dumbbell, Plus, UserCircle2, Bell, TestTube } from 'lucide-react';
+import { Dumbbell, Plus, UserCircle2 } from 'lucide-react';
 import AddExerciseModal from '@/components/AddExerciseModal';
 import ExerciseCard from '@/components/ExerciseCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -157,30 +157,7 @@ export default function DashboardPage() {
               // Always check and restore notification state after initialization
               await notificationService.checkAndRestoreNotificationState();
               
-              // Check if we should show notification permission modal
-              const hasAskedForPermission = localStorage.getItem('stronghabit-notification-asked');
-              const permissionStatus = notificationService.getPermissionStatus();
-              
-              console.log('Notification status check:', {
-                hasAskedForPermission,
-                permissionStatus,
-                exerciseCount: initialExercises.length
-              });
-              
-              // Handle notification permission logic
-              if (permissionStatus === 'granted') {
-                console.log('Permission already granted, restoring notification state');
-                // Use the new restoration method to ensure everything is properly set up
-                await notificationService.checkAndRestoreNotificationState();
-              } else if (!hasAskedForPermission && initialExercises.length > 0) {
-                // Show permission modal if:
-                // 1. User hasn't been asked before
-                // 2. Permission is not granted
-                // 3. User has exercises (not first time)
-                setTimeout(() => {
-                  setShowNotificationPermission(true);
-                }, 2000); // Show after 2 seconds
-              }
+              console.log('Notification service initialized');
               
               // Show PWA install prompt if not in standalone mode and has exercises
               const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
@@ -425,7 +402,7 @@ export default function DashboardPage() {
     setIsModalOpen(true);
   };
 
-  const handleSaveExercise = (exercise) => {
+  const handleSaveExercise = async (exercise) => {
     try {
       const newExercise = {
         ...exercise,
@@ -433,8 +410,21 @@ export default function DashboardPage() {
         currentReps: 0,
         createdAt: new Date().toISOString()
       };
+      
+      const isFirstExercise = exercises.length === 0;
       setExercises(prevExercises => [...prevExercises, newExercise]);
       setIsModalOpen(false);
+      
+      // Ask for notification permission when adding first exercise
+      if (isFirstExercise && typeof window !== 'undefined') {
+        const hasAskedForPermission = localStorage.getItem('stronghabit-notification-asked');
+        
+        if (!hasAskedForPermission) {
+          setTimeout(() => {
+            setShowNotificationPermission(true);
+          }, 1000); // Show after 1 second
+        }
+      }
     } catch (error) {
       console.error('Error saving new exercise:', error);
       // You might want to show an error message to the user here
@@ -494,43 +484,7 @@ export default function DashboardPage() {
     setShowPWAInstall(false);
   };
 
-  // Test notification function
-  const handleTestNotification = async () => {
-    try {
-      if (typeof window === 'undefined') {
-        return; // Skip on server-side
-      }
 
-      const { default: notificationService } = await import('@/services/notificationService');
-      
-      // Ensure service worker is ready
-      await notificationService.ensureServiceWorkerReady();
-      
-      // Check if permission is granted
-      if (notificationService.getPermissionStatus() !== 'granted') {
-        // Show permission modal if not granted
-        setShowNotificationPermission(true);
-        return;
-      }
-
-      // Show test notification
-      const success = await notificationService.showNotification(
-        'Test Notification! 🧪',
-        {
-          body: 'This is a test notification from StrongHabit. If you see this, notifications are working!',
-          tag: 'test-notification',
-          requireInteraction: false
-        }
-      );
-
-      if (!success) {
-        console.error('Test notification failed');
-        // Could show an error message to user here
-      }
-    } catch (error) {
-      console.error('Error testing notification:', error);
-    }
-  };
 
   // Separate exercises into ongoing and completed
   const completedExercises = exercises.filter(ex => (ex.currentReps || 0) >= ex.targetReps);
@@ -566,26 +520,6 @@ export default function DashboardPage() {
               </motion.button>
             )}
           </AnimatePresence>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleTestNotification();
-            }}
-            className="text-gray-400 hover:text-green-400 transition-colors"
-            title="Test Notification"
-          >
-            <TestTube className="w-6 h-6" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowNotificationPermission(true);
-            }}
-            className="text-gray-400 hover:text-purple-400 transition-colors"
-            title="Notification Settings"
-          >
-            <Bell className="w-6 h-6" />
-          </button>
           <button 
             className="text-gray-400 hover:text-white transition-colors"
             onClick={e => e.stopPropagation()}

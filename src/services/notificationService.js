@@ -189,8 +189,7 @@ class NotificationService {
       // Start smart reminders
       this.scheduleSmartReminders(9, 21);
       
-      // Set up periodic check to ensure notifications stay active (every 60 seconds)
-      this.startPeriodicStateCheck();
+      // Notifications are now managed by the service worker
       
       return true;
     }
@@ -198,27 +197,7 @@ class NotificationService {
     return false;
   }
 
-  // Start periodic check to ensure notification state stays active
-  startPeriodicStateCheck() {
-    if (this.periodicCheckId) {
-      clearInterval(this.periodicCheckId);
-    }
-    
-    this.periodicCheckId = setInterval(() => {
-      if (typeof window !== 'undefined' && Notification.permission === 'granted') {
-        console.log('Periodic check: Ensuring notifications are still active');
-        this.scheduleSmartReminders(9, 21);
-      }
-    }, 60 * 1000); // Check every 60 seconds
-  }
 
-  // Stop periodic check
-  stopPeriodicStateCheck() {
-    if (this.periodicCheckId) {
-      clearInterval(this.periodicCheckId);
-      this.periodicCheckId = null;
-    }
-  }
 
   // Show immediate notification
   async showNotification(title, options = {}) {
@@ -405,8 +384,8 @@ class NotificationService {
     // Check immediately
     checkAndNotify();
 
-         // Set up interval to check every 5 seconds (for testing)
-     this.reminderIntervalId = setInterval(checkAndNotify, 5 * 1000);
+                // Set up interval to check every 15 minutes (production)
+       this.reminderIntervalId = setInterval(checkAndNotify, 15 * 60 * 1000);
   }
 
   // Check exercises and send notification if incomplete
@@ -446,15 +425,15 @@ class NotificationService {
        
               if (lastNotificationTime) {
          const timeSinceLastNotification = now - parseInt(lastNotificationTime);
-          const minInterval = 10 * 1000; // 10 seconds minimum (for testing)
-          const maxInterval = 15 * 1000; // 15 seconds maximum (for testing)
+          const minInterval = 60 * 60 * 1000; // 60 minutes minimum (production)
+          const maxInterval = 90 * 60 * 1000; // 90 minutes maximum (production)
          
-          // Random interval between 10-15 seconds (for testing)
+          // Random interval between 60-90 minutes (production)
          const randomInterval = minInterval + Math.random() * (maxInterval - minInterval);
          
          console.log('Timing check:', {
-           timeSinceLastNotification: Math.round(timeSinceLastNotification / 1000) + 's',
-           requiredInterval: Math.round(randomInterval / 1000) + 's',
+           timeSinceLastNotification: Math.round(timeSinceLastNotification / 1000 / 60) + 'm',
+           requiredInterval: Math.round(randomInterval / 1000 / 60) + 'm',
            canSendNotification: timeSinceLastNotification >= randomInterval
          });
          
