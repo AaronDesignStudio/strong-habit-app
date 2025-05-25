@@ -23,6 +23,9 @@ class NotificationService {
       await navigator.serviceWorker.ready;
       console.log('Service Worker is ready');
 
+      // Set up message listener for service worker communication
+      this.setupServiceWorkerMessageListener();
+
       // Check current permission status
       this.permissionStatus = typeof window !== 'undefined' ? Notification.permission : 'default';
       
@@ -41,6 +44,45 @@ class NotificationService {
     }
   }
 
+  // Set up service worker message listener
+  setupServiceWorkerMessageListener() {
+    if (typeof window === 'undefined' || !navigator.serviceWorker) {
+      return;
+    }
+
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      console.log('Received message from service worker:', event.data);
+      
+      if (event.data.type === 'GET_EXERCISE_DATA') {
+        // Send exercise data to service worker
+        this.sendExerciseDataToServiceWorker();
+      }
+      
+      if (event.data.type === 'UPDATE_LAST_NOTIFICATION_TIME') {
+        // Update last notification time in localStorage
+        localStorage.setItem('stronghabit-last-reminder', event.data.timestamp.toString());
+      }
+    });
+  }
+
+  // Send exercise data to service worker
+  sendExerciseDataToServiceWorker() {
+    try {
+      if (typeof window === 'undefined') return;
+      
+      const exercises = JSON.parse(localStorage.getItem('stronghabit-exercises') || '[]');
+      
+      if (this.swRegistration && this.swRegistration.active) {
+        this.swRegistration.active.postMessage({
+          type: 'EXERCISE_DATA_RESPONSE',
+          exercises: exercises
+        });
+      }
+    } catch (error) {
+      console.error('Error sending exercise data to service worker:', error);
+    }
+  }
+
   // Request notification permission
   async requestPermission() {
     if (!this.isSupported) {
@@ -48,6 +90,8 @@ class NotificationService {
     }
 
     if (this.permissionStatus === 'granted') {
+      // If already granted, make sure smart reminders are running
+      this.scheduleSmartReminders(9, 21);
       return 'granted';
     }
 
@@ -58,6 +102,11 @@ class NotificationService {
       // Store permission status in localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem('stronghabit-notification-permission', permission);
+      }
+      
+      // If permission granted, start smart reminders
+      if (permission === 'granted') {
+        this.scheduleSmartReminders(9, 21);
       }
       
       return permission;
@@ -225,13 +274,29 @@ class NotificationService {
     // Clear any existing reminder intervals
     this.clearReminderInterval();
 
-    // Start the smart reminder system
-    this.startSmartReminderInterval(startHour, endHour);
-
-         console.log('Smart reminders started:', {
-       activeHours: `${startHour}:00 - ${endHour}:00`,
-       interval: '10-15 seconds (TESTING MODE - when exercises incomplete)'
-     });
+    // Start smart reminders in service worker (persistent)
+    if (this.swRegistration && this.swRegistration.active) {
+      this.swRegistration.active.postMessage({
+        type: 'START_SMART_REMINDERS',
+        startHour,
+        endHour
+      });
+      
+      console.log('Smart reminders started in service worker:', {
+        activeHours: `${startHour}:00 - ${endHour}:00`,
+        interval: '10-15 seconds (TESTING MODE - when exercises incomplete)',
+        persistent: true
+      });
+    } else {
+      // Fallback to client-side reminders if service worker not available
+      this.startSmartReminderInterval(startHour, endHour);
+      
+      console.log('Smart reminders started (client-side fallback):', {
+        activeHours: `${startHour}:00 - ${endHour}:00`,
+        interval: '10-15 seconds (TESTING MODE - when exercises incomplete)',
+        persistent: false
+      });
+    }
 
     return true;
   }

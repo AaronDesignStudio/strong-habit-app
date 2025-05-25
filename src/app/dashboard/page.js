@@ -164,11 +164,15 @@ export default function DashboardPage() {
                 exerciseCount: initialExercises.length
               });
               
-              // Show permission modal if:
-              // 1. User hasn't been asked before
-              // 2. Permission is not granted
-              // 3. User has exercises (not first time)
-              if (!hasAskedForPermission && permissionStatus !== 'granted' && initialExercises.length > 0) {
+              // Handle notification permission logic
+              if (permissionStatus === 'granted') {
+                console.log('Permission already granted, ensuring smart reminders are active');
+                notificationService.scheduleSmartReminders(9, 21);
+              } else if (!hasAskedForPermission && initialExercises.length > 0) {
+                // Show permission modal if:
+                // 1. User hasn't been asked before
+                // 2. Permission is not granted
+                // 3. User has exercises (not first time)
                 setTimeout(() => {
                   setShowNotificationPermission(true);
                 }, 2000); // Show after 2 seconds
@@ -460,9 +464,18 @@ export default function DashboardPage() {
   };
 
   // Handle notification permission granted
-  const handleNotificationPermissionGranted = () => {
+  const handleNotificationPermissionGranted = async () => {
     localStorage.setItem('stronghabit-notification-asked', 'true');
     setShowNotificationPermission(false);
+    
+    // Start smart reminders immediately after permission is granted
+    try {
+      const { default: notificationService } = await import('@/services/notificationService');
+      notificationService.scheduleSmartReminders(9, 21);
+      console.log('Smart reminders started after permission granted');
+    } catch (error) {
+      console.error('Error starting smart reminders after permission granted:', error);
+    }
   };
 
   // Handle notification permission modal close

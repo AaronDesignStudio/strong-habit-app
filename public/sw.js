@@ -7,38 +7,9 @@ const urlsToCache = [
   '/icons/icon-512x512.png'
 ];
 
-// Install event - cache resources
-self.addEventListener('install', (event) => {
-  console.log('Service Worker installing...');
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
-      .then(() => {
-        console.log('Service Worker installed and caching complete');
-        return self.skipWaiting();
-      })
-  );
-});
 
-// Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating...');
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => {
-      console.log('Service Worker activated and claiming clients');
-      return self.clients.claim();
-    })
-  );
-});
+
+
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
@@ -131,6 +102,10 @@ self.addEventListener('sync', (event) => {
   }
 });
 
+// Global variables for service worker
+let reminderIntervalId = null;
+let isReminderActive = false;
+
 // Message event - handle messages from main thread
 self.addEventListener('message', (event) => {
   console.log('Service worker received message:', event.data);
@@ -142,6 +117,258 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'CANCEL_NOTIFICATIONS') {
     cancelScheduledNotifications(event.data.tag);
   }
+  
+  if (event.data && event.data.type === 'START_SMART_REMINDERS') {
+    startSmartReminders(event.data.startHour, event.data.endHour);
+  }
+  
+  if (event.data && event.data.type === 'STOP_SMART_REMINDERS') {
+    stopSmartReminders();
+  }
+  
+  if (event.data && event.data.type === 'EXERCISE_DATA_RESPONSE') {
+    handleExerciseData(event.data.exercises);
+  }
+});
+
+// Start smart reminders in service worker
+function startSmartReminders(startHour = 9, endHour = 21) {
+  console.log('Service Worker: Starting smart reminders', { startHour, endHour });
+  
+  // Stop any existing reminders
+  stopSmartReminders();
+  
+  isReminderActive = true;
+  
+  // Store reminder settings for persistence
+  self.reminderSettings = { startHour, endHour };
+  
+  const checkAndNotify = () => {
+    if (!isReminderActive) return;
+    
+    const now = new Date();
+    const currentHour = now.getHours();
+    
+    console.log('Service Worker: Checking for notifications...', {
+      currentHour,
+      activeHours: `${startHour}-${endHour}`,
+      isActiveTime: currentHour >= startHour && currentHour < endHour
+    });
+    
+    // Only send reminders during active hours
+    if (currentHour < startHour || currentHour >= endHour) {
+      console.log('Service Worker: Outside active hours, skipping notification check');
+      return;
+    }
+    
+    // Check exercises and send notification if needed
+    checkExercisesAndNotify();
+  };
+  
+  // Check immediately
+  checkAndNotify();
+  
+  // Set up interval to check every 5 seconds (for testing)
+  reminderIntervalId = setInterval(checkAndNotify, 5 * 1000);
+  
+  // Set up a periodic check to ensure reminders stay active (every 30 seconds)
+  if (self.persistenceCheckId) {
+    clearInterval(self.persistenceCheckId);
+  }
+  
+  self.persistenceCheckId = setInterval(() => {
+    if (Notification.permission === 'granted' && !isReminderActive) {
+      console.log('Service Worker: Restarting inactive reminders');
+      startSmartReminders(startHour, endHour);
+    }
+  }, 30 * 1000);
+}
+
+// Stop smart reminders
+function stopSmartReminders() {
+  console.log('Service Worker: Stopping smart reminders');
+  isReminderActive = false;
+  if (reminderIntervalId) {
+    clearInterval(reminderIntervalId);
+    reminderIntervalId = null;
+  }
+  if (self.persistenceCheckId) {
+    clearInterval(self.persistenceCheckId);
+    self.persistenceCheckId = null;
+  }
+}
+
+// Check exercises and send notification if incomplete
+function checkExercisesAndNotify() {
+  try {
+    // Get exercises from IndexedDB or localStorage simulation
+    // Since we can't access localStorage directly in service worker,
+    // we'll use a different approach
+    
+    // For now, we'll send a message to all clients to get exercise data
+    self.clients.matchAll().then(clients => {
+      if (clients.length > 0) {
+        // Send message to get exercise data
+        clients[0].postMessage({
+          type: 'GET_EXERCISE_DATA'
+        });
+      } else {
+        // No clients available, try to get data from cache or storage
+        console.log('Service Worker: No clients available for exercise data');
+      }
+    });
+    
+  } catch (error) {
+    console.error('Service Worker: Error checking exercises:', error);
+  }
+}
+
+// Handle exercise data response from client
+function handleExerciseData(exercises) {
+  try {
+    if (!exercises || exercises.length === 0) {
+      return; // No exercises to check
+    }
+    
+    const incompleteExercises = exercises.filter(ex => (ex.currentReps || 0) < ex.targetReps);
+    
+    console.log('Service Worker: Exercise check:', {
+      totalExercises: exercises.length,
+      incompleteCount: incompleteExercises.length
+    });
+    
+    if (incompleteExercises.length === 0) {
+      console.log('Service Worker: All exercises complete - no reminder needed');
+      return; // All exercises complete
+    }
+    
+    // Check timing for notifications using a simple in-memory approach
+    // Since we can't access localStorage directly in service worker
+    const now = Date.now();
+    
+    // Use a global variable to track last notification time in service worker
+    if (!self.lastNotificationTime) {
+      self.lastNotificationTime = 0;
+    }
+    
+    if (self.lastNotificationTime) {
+      const timeSinceLastNotification = now - self.lastNotificationTime;
+      const minInterval = 10 * 1000; // 10 seconds minimum (for testing)
+      const maxInterval = 15 * 1000; // 15 seconds maximum (for testing)
+      
+      // Random interval between 10-15 seconds (for testing)
+      const randomInterval = minInterval + Math.random() * (maxInterval - minInterval);
+      
+      console.log('Service Worker: Timing check:', {
+        timeSinceLastNotification: Math.round(timeSinceLastNotification / 1000) + 's',
+        requiredInterval: Math.round(randomInterval / 1000) + 's',
+        canSendNotification: timeSinceLastNotification >= randomInterval
+      });
+      
+      if (timeSinceLastNotification < randomInterval) {
+        console.log('Service Worker: Too soon for next reminder');
+        return; // Too soon for next reminder
+      }
+    }
+    
+    // Send reminder notification
+    const reminderMessages = [
+      `${incompleteExercises.length} exercises waiting for you! 💪`,
+      `Time to crush those ${incompleteExercises.length} remaining exercises! 🔥`,
+      `Your strength journey continues - ${incompleteExercises.length} exercises to go! ⚡`,
+      `Ready to complete your ${incompleteExercises.length} exercises? Let's go! 🚀`,
+      `${incompleteExercises.length} exercises left - you've got this! 💎`
+    ];
+    
+    const randomMessage = reminderMessages[Math.floor(Math.random() * reminderMessages.length)];
+    
+    self.registration.showNotification('Workout Reminder 🏋️‍♂️', {
+      body: randomMessage,
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-72x72.png',
+      tag: 'smart-reminder',
+      requireInteraction: false,
+      actions: [
+        {
+          action: 'open',
+          title: 'Open App'
+        },
+        {
+          action: 'dismiss',
+          title: 'Dismiss'
+        }
+      ]
+    });
+    
+    // Update last notification time in service worker and client
+    self.lastNotificationTime = now;
+    
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({
+          type: 'UPDATE_LAST_NOTIFICATION_TIME',
+          timestamp: now
+        });
+      });
+    });
+    
+    console.log('Service Worker: Smart reminder sent:', {
+      incompleteCount: incompleteExercises.length,
+      message: randomMessage
+    });
+    
+  } catch (error) {
+    console.error('Service Worker: Error handling exercise data:', error);
+  }
+}
+
+// Activate event - clean up old caches and auto-start reminders
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker activating...');
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => {
+      console.log('Service Worker activated and claiming clients');
+      
+      // Auto-start smart reminders if notifications are enabled
+      if (Notification.permission === 'granted') {
+        console.log('Service Worker: Auto-starting smart reminders on activation');
+        // Use stored settings if available, otherwise default to 9-21
+        const settings = self.reminderSettings || { startHour: 9, endHour: 21 };
+        startSmartReminders(settings.startHour, settings.endHour);
+      }
+      
+      return self.clients.claim();
+    })
+  );
+});
+
+// Also start reminders when service worker installs (for first time)
+self.addEventListener('install', (event) => {
+  console.log('Service Worker installing...');
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(urlsToCache))
+      .then(() => {
+        console.log('Service Worker installed and caching complete');
+        
+        // Auto-start smart reminders if notifications are enabled
+        if (Notification.permission === 'granted') {
+          console.log('Service Worker: Auto-starting smart reminders on install');
+          startSmartReminders(9, 21);
+        }
+        
+        return self.skipWaiting();
+      })
+  );
 });
 
 // Helper function to schedule notifications
