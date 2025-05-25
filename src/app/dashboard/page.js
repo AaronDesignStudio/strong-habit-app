@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dumbbell, Plus, UserCircle2 } from 'lucide-react';
+import { Dumbbell, Plus, UserCircle2, Bell, TestTube } from 'lucide-react';
 import AddExerciseModal from '@/components/AddExerciseModal';
 import ExerciseCard from '@/components/ExerciseCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import CompletionCelebration from '@/components/CompletionCelebration';
+import NotificationPermission from '@/components/NotificationPermission';
+import notificationService from '@/services/notificationService';
 
 // Local Storage Keys
 const STORAGE_KEY = 'stronghabit-exercises';
@@ -105,6 +107,7 @@ export default function DashboardPage() {
   const [clickCount, setClickCount] = useState(0);
   const [showTestButton, setShowTestButton] = useState(false);
   const [showClock, setShowClock] = useState(false);
+  const [showNotificationPermission, setShowNotificationPermission] = useState(false);
 
   // Add new state for next day targets
   const [nextDayTargets, setNextDayTargets] = useState({});
@@ -140,6 +143,28 @@ export default function DashboardPage() {
         const initialExercises = initializeLocalStorage();
         setExercises(initialExercises);
         setStreak(parseInt(localStorage.getItem(STREAK_KEY) || '0'));
+        
+        // Initialize notification service
+        await notificationService.init();
+        
+        // Check if we should show notification permission modal
+        const hasAskedForPermission = localStorage.getItem('stronghabit-notification-asked');
+        const permissionStatus = notificationService.getPermissionStatus();
+        
+        // Start smart reminders if permission is granted
+        if (permissionStatus === 'granted') {
+          notificationService.scheduleSmartReminders(9, 21); // 9 AM to 9 PM
+        }
+        
+        // Show permission modal if:
+        // 1. User hasn't been asked before
+        // 2. Permission is not granted
+        // 3. User has exercises (not first time)
+        if (!hasAskedForPermission && permissionStatus !== 'granted' && initialExercises.length > 0) {
+          setTimeout(() => {
+            setShowNotificationPermission(true);
+          }, 2000); // Show after 2 seconds
+        }
       } catch (error) {
         console.error('Error loading exercises:', error);
         setExercises([]);
@@ -185,31 +210,45 @@ export default function DashboardPage() {
         }))
       });
 
-      if (allCompleted) {
-        const lastCelebration = localStorage.getItem(LAST_CELEBRATION_KEY);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        console.log('All exercises completed:', {
-          lastCelebration,
-          shouldShow: !lastCelebration || isNewDay(lastCelebration)
-        });
-        
-        // Only show celebration if not already shown today
-        if (!lastCelebration || isNewDay(lastCelebration)) {
-          // Update streak
-          const newStreak = streak + 1;
-          setStreak(newStreak);
-          localStorage.setItem(STREAK_KEY, String(newStreak));
+              if (allCompleted) {
+          const lastCelebration = localStorage.getItem(LAST_CELEBRATION_KEY);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
           
-          // Save celebration timestamp
-          localStorage.setItem(LAST_CELEBRATION_KEY, new Date().toISOString());
+          console.log('All exercises completed:', {
+            lastCelebration,
+            shouldShow: !lastCelebration || isNewDay(lastCelebration)
+          });
           
-          // Show celebration
-          setShowCelebration(true);
-          console.log('Showing celebration!');
+          // Only show celebration if not already shown today
+          if (!lastCelebration || isNewDay(lastCelebration)) {
+            // Update streak
+            const newStreak = streak + 1;
+            setStreak(newStreak);
+            localStorage.setItem(STREAK_KEY, String(newStreak));
+            
+            // Save celebration timestamp
+            localStorage.setItem(LAST_CELEBRATION_KEY, new Date().toISOString());
+            
+            // Show celebration
+            setShowCelebration(true);
+            console.log('Showing celebration!');
+            
+            // Send completion notification
+            const totalReps = exercises.reduce((total, ex) => total + (ex.currentReps || 0), 0);
+            notificationService.showCompletionNotification(exercises.length, totalReps);
+            
+            // Show streak milestone notification if applicable
+            notificationService.showStreakNotification(newStreak);
+            
+            // Update app badge
+            notificationService.updateBadge(0); // Clear badge when all exercises complete
+          }
+        } else {
+          // Update badge with remaining exercises
+          const remainingExercises = exercises.filter(ex => (ex.currentReps || 0) < ex.targetReps).length;
+          notificationService.updateBadge(remainingExercises);
         }
-      }
     }
   }, [exercises, isLoading, streak]);
 
@@ -385,6 +424,50 @@ export default function DashboardPage() {
     }
   };
 
+  // Handle notification permission granted
+  const handleNotificationPermissionGranted = () => {
+    localStorage.setItem('stronghabit-notification-asked', 'true');
+    setShowNotificationPermission(false);
+  };
+
+  // Handle notification permission modal close
+  const handleNotificationPermissionClose = () => {
+    localStorage.setItem('stronghabit-notification-asked', 'true');
+    setShowNotificationPermission(false);
+  };
+
+  // Test notification function
+  const handleTestNotification = async () => {
+    try {
+      // Ensure service worker is ready
+      await notificationService.ensureServiceWorkerReady();
+      
+      // Check if permission is granted
+      if (notificationService.getPermissionStatus() !== 'granted') {
+        // Show permission modal if not granted
+        setShowNotificationPermission(true);
+        return;
+      }
+
+      // Show test notification
+      const success = await notificationService.showNotification(
+        'Test Notification! 🧪',
+        {
+          body: 'This is a test notification from StrongHabit. If you see this, notifications are working!',
+          tag: 'test-notification',
+          requireInteraction: false
+        }
+      );
+
+      if (!success) {
+        console.error('Test notification failed');
+        // Could show an error message to user here
+      }
+    } catch (error) {
+      console.error('Error testing notification:', error);
+    }
+  };
+
   // Separate exercises into ongoing and completed
   const completedExercises = exercises.filter(ex => (ex.currentReps || 0) >= ex.targetReps);
   const ongoingExercises = exercises.filter(ex => (ex.currentReps || 0) < ex.targetReps);
@@ -419,6 +502,26 @@ export default function DashboardPage() {
               </motion.button>
             )}
           </AnimatePresence>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleTestNotification();
+            }}
+            className="text-gray-400 hover:text-green-400 transition-colors"
+            title="Test Notification"
+          >
+            <TestTube className="w-6 h-6" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowNotificationPermission(true);
+            }}
+            className="text-gray-400 hover:text-purple-400 transition-colors"
+            title="Notification Settings"
+          >
+            <Bell className="w-6 h-6" />
+          </button>
           <button 
             className="text-gray-400 hover:text-white transition-colors"
             onClick={e => e.stopPropagation()}
@@ -527,6 +630,13 @@ export default function DashboardPage() {
         isOpen={showCelebration}
         onClose={() => setShowCelebration(false)}
         stats={celebrationStats}
+      />
+
+      {/* Notification Permission Modal */}
+      <NotificationPermission
+        isOpen={showNotificationPermission}
+        onClose={handleNotificationPermissionClose}
+        onPermissionGranted={handleNotificationPermissionGranted}
       />
     </div>
   );
