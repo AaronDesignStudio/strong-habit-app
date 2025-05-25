@@ -3,7 +3,7 @@ class NotificationService {
   constructor() {
     this.swRegistration = null;
     this.permissionStatus = 'default';
-    this.isSupported = 'Notification' in window && 'serviceWorker' in navigator;
+    this.isSupported = typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator;
     this.reminderIntervalId = null;
   }
 
@@ -24,13 +24,13 @@ class NotificationService {
       console.log('Service Worker is ready');
 
       // Check current permission status
-      this.permissionStatus = Notification.permission;
+      this.permissionStatus = typeof window !== 'undefined' ? Notification.permission : 'default';
       
       return true;
     } catch (error) {
       console.error('Service Worker registration failed:', error);
       // Still return true if notifications are supported, just without service worker
-      this.permissionStatus = Notification.permission;
+      this.permissionStatus = typeof window !== 'undefined' ? Notification.permission : 'default';
       return this.isSupported;
     }
   }
@@ -50,7 +50,9 @@ class NotificationService {
       this.permissionStatus = permission;
       
       // Store permission status in localStorage
-      localStorage.setItem('stronghabit-notification-permission', permission);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('stronghabit-notification-permission', permission);
+      }
       
       return permission;
     } catch (error) {
@@ -253,6 +255,10 @@ class NotificationService {
   // Check exercises and send notification if incomplete
   checkExercisesAndNotify() {
     try {
+      if (typeof window === 'undefined') {
+        return; // Skip on server-side
+      }
+      
       const exercises = JSON.parse(localStorage.getItem('stronghabit-exercises') || '[]');
       
       if (exercises.length === 0) {
@@ -388,9 +394,9 @@ class NotificationService {
     );
   }
 
-  // Update app badge (for supported browsers)
+        // Update app badge (for supported browsers)
   updateBadge(count) {
-    if ('setAppBadge' in navigator) {
+    if (typeof window !== 'undefined' && 'setAppBadge' in navigator) {
       if (count > 0) {
         navigator.setAppBadge(count);
       } else {

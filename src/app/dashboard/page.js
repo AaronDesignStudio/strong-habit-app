@@ -8,7 +8,6 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import CompletionCelebration from '@/components/CompletionCelebration';
 import NotificationPermission from '@/components/NotificationPermission';
-import notificationService from '@/services/notificationService';
 
 // Local Storage Keys
 const STORAGE_KEY = 'stronghabit-exercises';
@@ -144,26 +143,29 @@ export default function DashboardPage() {
         setExercises(initialExercises);
         setStreak(parseInt(localStorage.getItem(STREAK_KEY) || '0'));
         
-        // Initialize notification service
-        await notificationService.init();
-        
-        // Check if we should show notification permission modal
-        const hasAskedForPermission = localStorage.getItem('stronghabit-notification-asked');
-        const permissionStatus = notificationService.getPermissionStatus();
-        
-        // Start smart reminders if permission is granted
-        if (permissionStatus === 'granted') {
-          notificationService.scheduleSmartReminders(9, 21); // 9 AM to 9 PM
-        }
-        
-        // Show permission modal if:
-        // 1. User hasn't been asked before
-        // 2. Permission is not granted
-        // 3. User has exercises (not first time)
-        if (!hasAskedForPermission && permissionStatus !== 'granted' && initialExercises.length > 0) {
-          setTimeout(() => {
-            setShowNotificationPermission(true);
-          }, 2000); // Show after 2 seconds
+        // Initialize notification service (client-side only)
+        if (typeof window !== 'undefined') {
+          const { default: notificationService } = await import('@/services/notificationService');
+          await notificationService.init();
+          
+          // Check if we should show notification permission modal
+          const hasAskedForPermission = localStorage.getItem('stronghabit-notification-asked');
+          const permissionStatus = notificationService.getPermissionStatus();
+          
+          // Start smart reminders if permission is granted
+          if (permissionStatus === 'granted') {
+            notificationService.scheduleSmartReminders(9, 21); // 9 AM to 9 PM
+          }
+          
+          // Show permission modal if:
+          // 1. User hasn't been asked before
+          // 2. Permission is not granted
+          // 3. User has exercises (not first time)
+          if (!hasAskedForPermission && permissionStatus !== 'granted' && initialExercises.length > 0) {
+            setTimeout(() => {
+              setShowNotificationPermission(true);
+            }, 2000); // Show after 2 seconds
+          }
         }
       } catch (error) {
         console.error('Error loading exercises:', error);
@@ -234,20 +236,28 @@ export default function DashboardPage() {
             setShowCelebration(true);
             console.log('Showing celebration!');
             
-            // Send completion notification
-            const totalReps = exercises.reduce((total, ex) => total + (ex.currentReps || 0), 0);
-            notificationService.showCompletionNotification(exercises.length, totalReps);
-            
-            // Show streak milestone notification if applicable
-            notificationService.showStreakNotification(newStreak);
-            
-            // Update app badge
-            notificationService.updateBadge(0); // Clear badge when all exercises complete
+            // Send completion notification (client-side only)
+            if (typeof window !== 'undefined') {
+              import('@/services/notificationService').then(({ default: notificationService }) => {
+                const totalReps = exercises.reduce((total, ex) => total + (ex.currentReps || 0), 0);
+                notificationService.showCompletionNotification(exercises.length, totalReps);
+                
+                // Show streak milestone notification if applicable
+                notificationService.showStreakNotification(newStreak);
+                
+                // Update app badge
+                notificationService.updateBadge(0); // Clear badge when all exercises complete
+              });
+            }
           }
         } else {
-          // Update badge with remaining exercises
-          const remainingExercises = exercises.filter(ex => (ex.currentReps || 0) < ex.targetReps).length;
-          notificationService.updateBadge(remainingExercises);
+          // Update badge with remaining exercises (client-side only)
+          if (typeof window !== 'undefined') {
+            import('@/services/notificationService').then(({ default: notificationService }) => {
+              const remainingExercises = exercises.filter(ex => (ex.currentReps || 0) < ex.targetReps).length;
+              notificationService.updateBadge(remainingExercises);
+            });
+          }
         }
     }
   }, [exercises, isLoading, streak]);
@@ -439,6 +449,12 @@ export default function DashboardPage() {
   // Test notification function
   const handleTestNotification = async () => {
     try {
+      if (typeof window === 'undefined') {
+        return; // Skip on server-side
+      }
+
+      const { default: notificationService } = await import('@/services/notificationService');
+      
       // Ensure service worker is ready
       await notificationService.ensureServiceWorkerReady();
       

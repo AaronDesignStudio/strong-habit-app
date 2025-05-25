@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, BellOff, X, Check, AlertCircle } from 'lucide-react';
-import notificationService from '@/services/notificationService';
+// Dynamic import for notificationService to avoid SSR issues
 
 export default function NotificationPermission({ 
   isOpen, 
@@ -17,8 +17,11 @@ export default function NotificationPermission({
 
   useEffect(() => {
     const checkPermissionStatus = async () => {
-      await notificationService.init();
-      setPermissionStatus(notificationService.getPermissionStatus());
+      if (typeof window !== 'undefined') {
+        const { default: notificationService } = await import('@/services/notificationService');
+        await notificationService.init();
+        setPermissionStatus(notificationService.getPermissionStatus());
+      }
     };
 
     if (isOpen) {
@@ -30,6 +33,11 @@ export default function NotificationPermission({
     setIsRequesting(true);
     
     try {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const { default: notificationService } = await import('@/services/notificationService');
       const result = await notificationService.requestPermission();
       setPermissionStatus(result);
       
