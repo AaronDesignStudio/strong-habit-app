@@ -222,34 +222,41 @@ class NotificationService {
     // Start the smart reminder system
     this.startSmartReminderInterval(startHour, endHour);
 
-    console.log('Smart reminders started:', {
-      activeHours: `${startHour}:00 - ${endHour}:00`,
-      interval: '60-90 minutes (when exercises incomplete)'
-    });
+         console.log('Smart reminders started:', {
+       activeHours: `${startHour}:00 - ${endHour}:00`,
+       interval: '10-15 seconds (TESTING MODE - when exercises incomplete)'
+     });
 
     return true;
   }
 
-  // Start the smart reminder interval system
-  startSmartReminderInterval(startHour, endHour) {
-    const checkAndNotify = () => {
-      const now = new Date();
-      const currentHour = now.getHours();
+     // Start the smart reminder interval system
+   startSmartReminderInterval(startHour, endHour) {
+     const checkAndNotify = () => {
+       const now = new Date();
+       const currentHour = now.getHours();
 
-      // Only send reminders during active hours
-      if (currentHour < startHour || currentHour >= endHour) {
-        return;
-      }
+       console.log('Checking for notifications...', {
+         currentHour,
+         activeHours: `${startHour}-${endHour}`,
+         isActiveTime: currentHour >= startHour && currentHour < endHour
+       });
 
-      // Check if exercises are incomplete
-      this.checkExercisesAndNotify();
-    };
+       // Only send reminders during active hours
+       if (currentHour < startHour || currentHour >= endHour) {
+         console.log('Outside active hours, skipping notification check');
+         return;
+       }
+
+       // Check if exercises are incomplete
+       this.checkExercisesAndNotify();
+     };
 
     // Check immediately
     checkAndNotify();
 
-    // Set up interval to check every 15 minutes
-    this.reminderIntervalId = setInterval(checkAndNotify, 15 * 60 * 1000);
+         // Set up interval to check every 5 seconds (for testing)
+     this.reminderIntervalId = setInterval(checkAndNotify, 5 * 1000);
   }
 
   // Check exercises and send notification if incomplete
@@ -265,29 +272,49 @@ class NotificationService {
         return; // No exercises to check
       }
 
-      const incompleteExercises = exercises.filter(ex => (ex.currentReps || 0) < ex.targetReps);
-      
-      if (incompleteExercises.length === 0) {
-        console.log('All exercises complete - no reminder needed');
-        return; // All exercises complete
-      }
+             const incompleteExercises = exercises.filter(ex => (ex.currentReps || 0) < ex.targetReps);
+       
+       console.log('Exercise check:', {
+         totalExercises: exercises.length,
+         incompleteCount: incompleteExercises.length,
+         exercises: exercises.map(ex => ({
+           name: ex.name,
+           current: ex.currentReps || 0,
+           target: ex.targetReps,
+           isComplete: (ex.currentReps || 0) >= ex.targetReps
+         }))
+       });
+       
+       if (incompleteExercises.length === 0) {
+         console.log('All exercises complete - no reminder needed');
+         return; // All exercises complete
+       }
 
-      // Check if enough time has passed since last notification
-      const lastNotificationTime = localStorage.getItem('stronghabit-last-reminder');
-      const now = Date.now();
-      
-      if (lastNotificationTime) {
-        const timeSinceLastNotification = now - parseInt(lastNotificationTime);
-        const minInterval = 60 * 60 * 1000; // 60 minutes minimum
-        const maxInterval = 90 * 60 * 1000; // 90 minutes maximum
-        
-        // Random interval between 60-90 minutes
-        const randomInterval = minInterval + Math.random() * (maxInterval - minInterval);
-        
-        if (timeSinceLastNotification < randomInterval) {
-          return; // Too soon for next reminder
-        }
-      }
+             // Check if enough time has passed since last notification
+       const lastNotificationTime = localStorage.getItem('stronghabit-last-reminder');
+       const now = Date.now();
+       
+              if (lastNotificationTime) {
+         const timeSinceLastNotification = now - parseInt(lastNotificationTime);
+          const minInterval = 10 * 1000; // 10 seconds minimum (for testing)
+          const maxInterval = 15 * 1000; // 15 seconds maximum (for testing)
+         
+          // Random interval between 10-15 seconds (for testing)
+         const randomInterval = minInterval + Math.random() * (maxInterval - minInterval);
+         
+         console.log('Timing check:', {
+           timeSinceLastNotification: Math.round(timeSinceLastNotification / 1000) + 's',
+           requiredInterval: Math.round(randomInterval / 1000) + 's',
+           canSendNotification: timeSinceLastNotification >= randomInterval
+         });
+         
+         if (timeSinceLastNotification < randomInterval) {
+           console.log('Too soon for next reminder');
+           return; // Too soon for next reminder
+         }
+       } else {
+         console.log('No previous notification time - sending first notification');
+       }
 
       // Send reminder notification
       const reminderMessages = [
