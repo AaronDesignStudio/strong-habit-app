@@ -7,7 +7,7 @@ import ExerciseCard from '@/components/ExerciseCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import CompletionCelebration from '@/components/CompletionCelebration';
-import NotificationPermission from '@/components/NotificationPermission';
+
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 
 // Local Storage Keys
@@ -107,7 +107,7 @@ export default function DashboardPage() {
   const [clickCount, setClickCount] = useState(0);
   const [showTestButton, setShowTestButton] = useState(false);
   const [showClock, setShowClock] = useState(false);
-  const [showNotificationPermission, setShowNotificationPermission] = useState(false);
+
   const [showPWAInstall, setShowPWAInstall] = useState(false);
 
   // Add new state for next day targets
@@ -147,34 +147,17 @@ export default function DashboardPage() {
         setExercises(initialExercises);
         setStreak(parseInt(localStorage.getItem(STREAK_KEY) || '0'));
         
-        // Initialize notification service (client-side only, non-blocking)
+        // Show PWA install prompt if not in standalone mode and has exercises
         if (typeof window !== 'undefined') {
-          // Don't await this - let it run in background
-          import('@/services/notificationService').then(async ({ default: notificationService }) => {
-            try {
-              await notificationService.init();
-              
-              // Always check and restore notification state after initialization
-              await notificationService.checkAndRestoreNotificationState();
-              
-              console.log('Notification service initialized');
-              
-              // Show PWA install prompt if not in standalone mode and has exercises
-              const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                                 window.navigator.standalone === true;
-              const hasShownPWAPrompt = localStorage.getItem('stronghabit-pwa-prompt-shown');
-              
-              if (!isStandalone && !hasShownPWAPrompt && initialExercises.length > 0) {
-                setTimeout(() => {
-                  setShowPWAInstall(true);
-                }, 5000); // Show after 5 seconds
-              }
-            } catch (error) {
-              console.error('Error initializing notification service:', error);
-            }
-          }).catch(error => {
-            console.error('Error loading notification service:', error);
-          });
+          const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                               window.navigator.standalone === true;
+          const hasShownPWAPrompt = localStorage.getItem('stronghabit-pwa-prompt-shown');
+          
+          if (!isStandalone && !hasShownPWAPrompt && initialExercises.length > 0) {
+            setTimeout(() => {
+              setShowPWAInstall(true);
+            }, 5000); // Show after 5 seconds
+          }
         }
       } catch (error) {
         console.error('Error loading exercises:', error);
@@ -246,27 +229,7 @@ export default function DashboardPage() {
             setShowCelebration(true);
             console.log('Showing celebration!');
             
-            // Send completion notification (client-side only)
-            if (typeof window !== 'undefined') {
-              import('@/services/notificationService').then(({ default: notificationService }) => {
-                const totalReps = exercises.reduce((total, ex) => total + (ex.currentReps || 0), 0);
-                notificationService.showCompletionNotification(exercises.length, totalReps);
-                
-                // Show streak milestone notification if applicable
-                notificationService.showStreakNotification(newStreak);
-                
-                // Update app badge
-                notificationService.updateBadge(0); // Clear badge when all exercises complete
-              });
-            }
-          }
-        } else {
-          // Update badge with remaining exercises (client-side only)
-          if (typeof window !== 'undefined') {
-            import('@/services/notificationService').then(({ default: notificationService }) => {
-              const remainingExercises = exercises.filter(ex => (ex.currentReps || 0) < ex.targetReps).length;
-              notificationService.updateBadge(remainingExercises);
-            });
+
           }
         }
     }
@@ -415,16 +378,7 @@ export default function DashboardPage() {
       setExercises(prevExercises => [...prevExercises, newExercise]);
       setIsModalOpen(false);
       
-      // Ask for notification permission when adding first exercise
-      if (isFirstExercise && typeof window !== 'undefined') {
-        const hasAskedForPermission = localStorage.getItem('stronghabit-notification-asked');
-        
-        if (!hasAskedForPermission) {
-          setTimeout(() => {
-            setShowNotificationPermission(true);
-          }, 1000); // Show after 1 second
-        }
-      }
+
     } catch (error) {
       console.error('Error saving new exercise:', error);
       // You might want to show an error message to the user here
@@ -457,26 +411,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Handle notification permission granted
-  const handleNotificationPermissionGranted = async () => {
-    localStorage.setItem('stronghabit-notification-asked', 'true');
-    setShowNotificationPermission(false);
-    
-    // Restore notification state immediately after permission is granted
-    try {
-      const { default: notificationService } = await import('@/services/notificationService');
-      await notificationService.checkAndRestoreNotificationState();
-      console.log('Notification state restored after permission granted');
-    } catch (error) {
-      console.error('Error restoring notification state after permission granted:', error);
-    }
-  };
 
-  // Handle notification permission modal close
-  const handleNotificationPermissionClose = () => {
-    localStorage.setItem('stronghabit-notification-asked', 'true');
-    setShowNotificationPermission(false);
-  };
 
   // Handle PWA install prompt close
   const handlePWAInstallClose = () => {
@@ -630,12 +565,7 @@ export default function DashboardPage() {
         stats={celebrationStats}
       />
 
-      {/* Notification Permission Modal */}
-      <NotificationPermission
-        isOpen={showNotificationPermission}
-        onClose={handleNotificationPermissionClose}
-        onPermissionGranted={handleNotificationPermissionGranted}
-      />
+
 
       {/* PWA Install Prompt */}
       <PWAInstallPrompt
