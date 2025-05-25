@@ -168,8 +168,8 @@ function startSmartReminders(startHour = 9, endHour = 21) {
   // Check immediately
   checkAndNotify();
   
-  // Set up interval to check every 15 minutes (production)
-  reminderIntervalId = setInterval(checkAndNotify, 15 * 60 * 1000);
+  // Set up interval to check every 5 seconds (testing)
+  reminderIntervalId = setInterval(checkAndNotify, 5 * 1000);
   
   // Set up a periodic check to ensure reminders stay active (every 30 seconds)
   if (self.persistenceCheckId) {
@@ -253,15 +253,15 @@ function handleExerciseData(exercises) {
     
     if (self.lastNotificationTime) {
       const timeSinceLastNotification = now - self.lastNotificationTime;
-      const minInterval = 60 * 60 * 1000; // 60 minutes minimum (production)
-      const maxInterval = 90 * 60 * 1000; // 90 minutes maximum (production)
+      const minInterval = 10 * 1000; // 10 seconds minimum (testing)
+      const maxInterval = 15 * 1000; // 15 seconds maximum (testing)
       
-      // Random interval between 60-90 minutes (production)
+      // Random interval between 10-15 seconds (testing)
       const randomInterval = minInterval + Math.random() * (maxInterval - minInterval);
       
       console.log('Service Worker: Timing check:', {
-        timeSinceLastNotification: Math.round(timeSinceLastNotification / 1000 / 60) + 'm',
-        requiredInterval: Math.round(randomInterval / 1000 / 60) + 'm',
+        timeSinceLastNotification: Math.round(timeSinceLastNotification / 1000) + 's',
+        requiredInterval: Math.round(randomInterval / 1000) + 's',
         canSendNotification: timeSinceLastNotification >= randomInterval
       });
       
