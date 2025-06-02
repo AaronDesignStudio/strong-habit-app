@@ -1,8 +1,18 @@
 import { supabase } from '@/lib/supabase'
 
+// Check if we have valid Supabase configuration
+const isSupabaseConfigured = () => {
+  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+}
+
 // User Management
 export const getCurrentUser = async () => {
   try {
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase not configured, returning null user')
+      return null
+    }
+    
     const { data: { user }, error } = await supabase.auth.getUser()
     if (error) {
       console.error('Supabase auth error:', error)
@@ -19,6 +29,10 @@ export const getCurrentUser = async () => {
 // Sign in with Google
 export const signInWithGoogle = async () => {
   try {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase not configured. Please set up environment variables.')
+    }
+    
     console.log('Attempting Google sign-in...')
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -47,6 +61,11 @@ export const signInWithGoogle = async () => {
 // Sign out user
 export const signOut = async () => {
   try {
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase not configured, cannot sign out')
+      return true
+    }
+    
     console.log('Signing out user...')
     const { error } = await supabase.auth.signOut()
     if (error) {
@@ -64,6 +83,12 @@ export const signOut = async () => {
 // Enhanced sign in that tries to restore session first
 export const ensureUserAuthenticated = async () => {
   try {
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase not configured, cannot authenticate user')
+      // Return a mock user for build time
+      return { id: 'anonymous', email: null }
+    }
+    
     console.log('Checking for existing user session...')
     
     // First, try to get the current user from the session
@@ -148,6 +173,11 @@ export const getUserProfile = async () => {
 // Exercise Management
 export const getExercises = async (userId) => {
   try {
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase not configured, returning empty exercises')
+      return []
+    }
+    
     if (!userId) throw new Error('User ID is required')
     
     const { data, error } = await supabase
@@ -340,6 +370,15 @@ export const resetExercisesForNewDay = async (userId, exercises, nextDayTargets)
 // User Stats Management
 export const getUserStats = async (userId) => {
   try {
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase not configured, returning default stats')
+      return {
+        streak: 0,
+        lastReset: new Date().toISOString(),
+        lastCelebration: null
+      }
+    }
+    
     if (!userId) throw new Error('User ID is required')
     
     console.log('Fetching user stats for:', userId)
@@ -494,6 +533,11 @@ export const isNewDay = (lastResetDate) => {
 // Add a function to test Supabase connection
 export const testSupabaseConnection = async () => {
   try {
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase not configured, skipping connection test')
+      return false
+    }
+    
     console.log('Testing Supabase connection...')
     const { data, error } = await supabase.from('exercises').select('count').limit(1)
     
