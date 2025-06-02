@@ -4,13 +4,13 @@ export const config = {
   // Production URLs
   production: {
     appUrl: 'https://strong-habit-app.netlify.app',
-    redirectUrl: 'https://strong-habit-app.netlify.app/dashboard'
+    redirectUrl: 'https://strong-habit-app.netlify.app/auth/callback'
   },
   
   // Development URLs
   development: {
     appUrl: 'http://localhost:3002',
-    redirectUrl: 'http://localhost:3002/dashboard'
+    redirectUrl: 'http://localhost:3002/auth/callback'
   }
 }
 

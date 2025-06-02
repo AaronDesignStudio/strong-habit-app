@@ -39,7 +39,6 @@ export const signInWithGoogle = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: getAuthRedirectUrl(),
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
@@ -52,7 +51,7 @@ export const signInWithGoogle = async () => {
       throw error
     }
     
-    console.log('Google sign-in initiated with redirect:', getAuthRedirectUrl())
+    console.log('Google sign-in initiated')
     return data
   } catch (error) {
     console.error('Error signing in with Google:', error)

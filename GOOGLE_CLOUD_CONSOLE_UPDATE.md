@@ -1,8 +1,8 @@
 # 🔧 Google Cloud Console Update for Production
 
-## 🚨 Fix Required: Add Production URL to Google Cloud Console
+## 🚨 Fix Required: Update Redirect URLs in Google Cloud Console
 
-You're seeing localhost redirects because your Google Cloud Console doesn't have your production URL configured.
+You're seeing malformed URLs because we need to update the redirect configuration.
 
 ## 📝 Step-by-Step Fix:
 
@@ -12,31 +12,29 @@ You're seeing localhost redirects because your Google Cloud Console doesn't have
 
 ### 2. Go to Credentials
 - Click **APIs & Services** → **Credentials**
-- Click on your **OAuth 2.0 Client ID** (should be named "StrongHabit" or similar)
+- Click on your **OAuth 2.0 Client ID** (the one we can see in your screenshot)
 
 ### 3. Update Authorized JavaScript Origins
 Add your production URL to the **Authorized JavaScript origins** section:
 
-**Current (what you should see):**
-```
-http://localhost:3002
-```
-
-**Add this URL:**
-```
-https://strong-habit-app.netlify.app
-```
-
-**Final result should be:**
+**Should include:**
 ```
 http://localhost:3002
 https://strong-habit-app.netlify.app
 ```
 
-### 4. Verify Authorized Redirect URIs
-Make sure this section contains your Supabase callback URL:
+### 4. **IMPORTANT: Update Authorized Redirect URIs**
+**Replace the current Supabase URL with these two URLs:**
+
+**Remove:**
 ```
 https://pgzyskfyyvihbukrsynr.supabase.co/auth/v1/callback
+```
+
+**Add these instead:**
+```
+https://strong-habit-app.netlify.app/auth/callback
+http://localhost:3002/auth/callback
 ```
 
 ### 5. Save Changes
@@ -45,38 +43,37 @@ https://pgzyskfyyvihbukrsynr.supabase.co/auth/v1/callback
 
 ## 🔍 What This Fixes:
 
-- ✅ **Production Google login** will work correctly
-- ✅ **No more localhost redirects** on production
-- ✅ **Proper redirect** to your Netlify app
-- ✅ **Development still works** on localhost
+- ✅ **Eliminates malformed URLs** with Supabase prefix
+- ✅ **Direct redirect** to your app's callback handler
+- ✅ **Proper OAuth flow** without URL corruption
+- ✅ **Cleaner redirect handling**
 
 ## 🚀 After Making Changes:
 
 1. **Wait 5-15 minutes** for Google to propagate changes
 2. **Test Google login** on your production site
-3. **Should redirect properly** to `/dashboard` on your Netlify domain
+3. **Should redirect to** `/auth/callback` then to `/dashboard`
+4. **No more malformed URLs** with Supabase prefixes
 
-## 🔧 Code Changes Made:
-
-- ✅ **Fixed redirect URL logic** to use correct production URL
-- ✅ **Added environment-aware configuration**
-- ✅ **Centralized URL management** in config file
-- ✅ **Better logging** to debug redirect URLs
-
-## 🎯 Expected Flow:
+## 🎯 Expected Flow After Fix:
 
 **Production:**
 1. User clicks "Continue with Google"
-2. Redirects to Google OAuth
-3. User authenticates
-4. Google redirects to: `https://strong-habit-app.netlify.app/dashboard`
-5. User lands on dashboard with authentication complete
+2. Redirects to Google authentication
+3. User authenticates with Google
+4. Google redirects to: `https://strong-habit-app.netlify.app/auth/callback`
+5. Our callback handler processes the authentication
+6. User gets redirected to: `https://strong-habit-app.netlify.app/dashboard`
+7. ✅ **Clean URLs throughout the process!**
 
-**Development:**
-1. User clicks "Continue with Google"
-2. Redirects to Google OAuth  
-3. User authenticates
-4. Google redirects to: `http://localhost:3002/dashboard`
-5. User lands on dashboard with authentication complete
+## 📋 Summary of URLs to Set:
 
-Your Google authentication should work perfectly after updating the Google Cloud Console settings! 🎉 
+**Authorized JavaScript Origins:**
+- `http://localhost:3002`
+- `https://strong-habit-app.netlify.app`
+
+**Authorized Redirect URIs:**
+- `https://strong-habit-app.netlify.app/auth/callback`
+- `http://localhost:3002/auth/callback`
+
+This should completely fix the malformed URL issue! 🎉 
