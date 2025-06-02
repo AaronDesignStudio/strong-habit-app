@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { getAuthRedirectUrl } from '@/lib/config'
 
 // Check if we have valid Supabase configuration
 const isSupabaseConfigured = () => {
@@ -34,10 +35,11 @@ export const signInWithGoogle = async () => {
     }
     
     console.log('Attempting Google sign-in...')
+    
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: getAuthRedirectUrl(),
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
@@ -50,7 +52,7 @@ export const signInWithGoogle = async () => {
       throw error
     }
     
-    console.log('Google sign-in initiated')
+    console.log('Google sign-in initiated with redirect:', getAuthRedirectUrl())
     return data
   } catch (error) {
     console.error('Error signing in with Google:', error)
